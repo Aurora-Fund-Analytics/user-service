@@ -2,11 +2,13 @@ from datetime import datetime
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from bson import ObjectId
+from jose import jwt, JWTError
 
 from database import users_collection
-from models import user_helper
-from schemas import UserCreate, UserOut, Token
-from auth import hash_password, verify_password, create_access_token
+from src.models import user_helper
+from src.schemas import UserCreate, UserOut, Token
+from src.auth import hash_password, verify_password, create_access_token, SECRET_KEY, ALGORITHM
+
 
 app = FastAPI(title="User Microservice")
 
@@ -14,9 +16,6 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 # Utility: get current user from token
 def get_current_user(token: str = Depends(oauth2_scheme)):
-    from auth import SECRET_KEY, ALGORITHM
-    from jose import jwt, JWTError
-
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
