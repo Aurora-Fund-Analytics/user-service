@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from bson import ObjectId
 from jose import jwt, JWTError
 
-from database import users_collection
+from database import db_users
 from src.models import user_helper
 from src.schemas import UserCreate, UserOut, Token
 from src.auth import hash_password, verify_password, create_access_token, SECRET_KEY, ALGORITHM
@@ -24,7 +24,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid authentication")
 
-    user = users_collection.find_one({"username": username})
+    user = db_users.find_one({"username": username})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user_helper(user)
@@ -33,7 +33,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 # Register
 @app.post("/register", response_model=UserOut)
 def register(user: UserCreate):
-    if users_collection.find_one({"username": user.username}):
+    if db_users.find_one({"username": user.username}):
         raise HTTPException(status_code=400, detail="Username already exists")
 
     new_user = {
@@ -42,15 +42,15 @@ def register(user: UserCreate):
         "password_hash": hash_password(user.password),
         "join_date": datetime.utcnow(),
     }
-    result = users_collection.insert_one(new_user)
-    created_user = users_collection.find_one({"_id": result.inserted_id})
+    result = db_users.insert_one(new_user)
+    created_user = db_users.find_one({"_id": result.inserted_id})
     return user_helper(created_user)
 
 
 # Login
 @app.post("/login", response_model=Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = users_collection.find_one({"username": form_data.username})
+    user = db_users.find_one({"username": form_data.username})
     if not user or not verify_password(form_data.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
