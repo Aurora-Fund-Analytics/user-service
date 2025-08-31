@@ -1,49 +1,50 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
-from main import app
+from main import register
 from src.auth import hash_password
-
-client = TestClient(app)
-
-
-# Replace database.db_users collection with a mock Mongo collection
-@pytest.fixture
-def mock_users_collection():
-    with patch("database.db_users") as mock_collection:
-        yield mock_collection
+from src.schemas import UserCreate
+import json
 
 
-def test_register_success(mock_users_collection):
-    # When the app calls users_collection.find_one(...), it will get None (simulating "user does not exist").
-    mock_users_collection.find_one.return_value = None
-    # When the app calls insert_one(...), it pretends a new Mongo _id was created.
-    mock_users_collection.insert_one.return_value.inserted_id = "123" 
-    # Now the mock will return this dictionary (simulating the newly created user document).
-    mock_users_collection.find_one.return_value = {
-        "_id": "123",
-        "username": "testuser",
-        "full_name": "Test User",
-        "password_hash": hash_password("password"),
-        "join_date": "2025-01-01T00:00:00Z"
-    }
+def test_register_success():
+    with patch('pymongo.MongoClient') as MockMongoClient:
+        # Configure the mock db
+        mock_collection = MagicMock()
+        mock_collection.find_one.return_value = None
+        mock_collection.insert_one.return_value = {
+            "_id": "123",
+            "username": "testuser",
+            "full_name": "Test User",
+            "password_hash": hash_password("password"),
+            "join_date": "2025-01-01T00:00:00Z"
+        }
+        MockMongoClient.return_value.db_name.collection_name = mock_collection
+        
+        payload = UserCreate(
+            username="testuser",
+            full_name="Test User",
+            password="password"
+        )
+        response = register(user=payload, db_users=mock_collection)
+        assert response.status_code == 200
 
-    payload = {"username": "testuser", "full_name": "Test User", "password": "password"}
-    response = client.post("/register", json=payload)
-
-    assert response.status_code == 200
-    body = response.json()
-    assert body["username"] == "testuser"
-    assert body["full_name"] == "Test User"
-
-
-# def test_register_existing_user(mock_users_collection):
-#     mock_users_collection.find_one.return_value = {"username": "testuser"}
-#     payload = {"username": "testuser", "full_name": "Test User", "password": "password"}
-
-#     response = client.post("/register", json=payload)
-#     assert response.status_code == 400
-#     assert response.json()["detail"] == "Username already exists"
+def test_register_existing_user():
+    with patch('pymongo.MongoClient') as MockMongoClient:
+        # Configure the mock db
+        mock_collection = MagicMock()
+        mock_collection.find_one.return_value = {"username": "testuser"}
+        MockMongoClient.return_value.db_name.collection_name = mock_collection
+        
+        payload = UserCreate(
+            username="testuser",
+            full_name="Test User",
+            password="password"
+        )
+        response = register(user=payload, db_users=mock_collection)
+        body = json.loads(response.body.decode('utf-8'))
+        assert response.status_code == 400
+        assert body["details"] == "Username already exists"
 
 
 # def test_login_success(mock_users_collection):
