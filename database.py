@@ -10,7 +10,7 @@ try:
 except Exception as e:
     print(f"Error loading environment vars: {e}")
 
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://admin:password@localhost:27017")
 
 # REDIS_HOST = os.getenv("REDIS_HOST", "redis-master.redis.svc.cluster.local")
 # REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))

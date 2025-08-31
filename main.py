@@ -1,5 +1,6 @@
 from datetime import datetime
 from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from bson import ObjectId
 from jose import jwt, JWTError
@@ -30,11 +31,16 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
     return user_helper(user)
 
 
+@app.get("/")
+def read_root():
+    return {"message": "User Microservice is Running!"}
+
+
 # Register
 @app.post("/register", response_model=UserOut)
-def register(user: UserCreate):
+def register(user: UserCreate, db_users=db_users):
     if db_users.find_one({"username": user.username}):
-        raise HTTPException(status_code=400, detail="Username already exists")
+        return JSONResponse(status_code=400, content={"details": "Username already exists"})
 
     new_user = {
         "username": user.username,
@@ -43,8 +49,7 @@ def register(user: UserCreate):
         "join_date": datetime.utcnow(),
     }
     result = db_users.insert_one(new_user)
-    created_user = db_users.find_one({"_id": result.inserted_id})
-    return user_helper(created_user)
+    return JSONResponse(status_code=200, content=result)
 
 
 # Login
