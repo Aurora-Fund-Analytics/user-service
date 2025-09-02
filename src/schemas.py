@@ -1,5 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel, Field
+from typing import Dict, Optional
 
 class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
@@ -9,8 +10,10 @@ class UserCreate(BaseModel):
 class UserOut(BaseModel):
     id: str
     username: str
-    full_name: str | None
+    full_name: Optional[str]
     join_date: datetime
+    cash_balance: float
+    holdings: Dict[str, int]
 
 class Token(BaseModel):
     access_token: str

@@ -38,7 +38,7 @@ def read_root():
 
 # Register
 @app.post("/register", response_model=UserOut)
-def register(user: UserCreate, db_users=db_users):
+def register(user: UserCreate):
     if db_users.find_one({"username": user.username}):
         return JSONResponse(status_code=400, content={"details": "Username already exists"})
 
@@ -47,9 +47,12 @@ def register(user: UserCreate, db_users=db_users):
         "full_name": user.full_name,
         "password_hash": hash_password(user.password),
         "join_date": datetime.utcnow(),
+        "cash_balance": 100_000.0,   # default starting balance
+        "holdings": {},              # empty dict initially
     }
     result = db_users.insert_one(new_user)
-    return JSONResponse(status_code=200, content=result)
+    created_user = db_users.find_one({"_id": result.inserted_id})
+    return user_helper(created_user)
 
 
 # Login
